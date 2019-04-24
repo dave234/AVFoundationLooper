@@ -12,6 +12,7 @@
 		5560C80E226FE87500ECBECB /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 5560C80C226FE87500ECBECB /* Main.storyboard */; };
 		5560C810226FE87600ECBECB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5560C80F226FE87600ECBECB /* Assets.xcassets */; };
 		5560C813226FE87600ECBECB /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 5560C811226FE87600ECBECB /* LaunchScreen.storyboard */; };
+		5560C81B226FE89900ECBECB /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5560C81A226FE89900ECBECB /* AudioEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		5560C80F226FE87600ECBECB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5560C812226FE87600ECBECB /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		5560C814226FE87600ECBECB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5560C81A226FE89900ECBECB /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@
 		5560C807226FE87500ECBECB /* AVFoundationLooper */ = {
 			isa = PBXGroup;
 			children = (
+				5560C81A226FE89900ECBECB /* AudioEngine.swift */,
 				5560C808226FE87500ECBECB /* AppDelegate.swift */,
 				5560C80A226FE87500ECBECB /* ViewController.swift */,
 				5560C80C226FE87500ECBECB /* Main.storyboard */,
@@ -135,6 +138,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5560C81B226FE89900ECBECB /* AudioEngine.swift in Sources */,
 				5560C80B226FE87500ECBECB /* ViewController.swift in Sources */,
 				5560C809226FE87500ECBECB /* AppDelegate.swift in Sources */,
 			);
@@ -285,6 +289,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = PM27ULWQ66;
 				INFOPLIST_FILE = AVFoundationLooper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -303,6 +308,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = PM27ULWQ66;
 				INFOPLIST_FILE = AVFoundationLooper/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
