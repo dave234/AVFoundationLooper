@@ -72,6 +72,7 @@ class ViewController: UIViewController {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setActive(true)
         try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker])
+        try audioSession.setPreferredIOBufferDuration(256 / audioSession.sampleRate)
 
         guard let format = AVAudioFormat(standardFormatWithSampleRate: audioSession.sampleRate, channels: 2) else {
             throw NSError(domain: "AVFoundationLooper", code: 0, userInfo: [NSLocalizedDescriptionKey:"Bunk Format"])
@@ -93,19 +94,31 @@ class ViewController: UIViewController {
         let button = UIButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(loopButtonAction(button:event:)), for: .touchDown)
-        button.setTitle("Button", for: .normal)
+        button.setTitle("Record", for: .normal)
         button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 30)
+        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 40)
         return button
     }()
 
     @objc func loopButtonAction(button: UIButton, event: UIEvent) {
+
+
+
+        audioEngine?.toggleLooping(time: event.timestamp)
+
+        switch audioEngine?.state ?? .idle {
+        case .recording:
+            button.setTitle("Loop", for: .normal)
+        case .looping, .awaitingRecordingStop:
+            button.setTitle("Clear", for: .normal)
+        case .idle:
+            button.setTitle("Record", for: .normal)
+        }
+
         button.transform = CGAffineTransform(scaleX: 2, y: 2)
         UIView.animate(withDuration: 0.1, delay: 0, options: .allowUserInteraction, animations: {
             button.transform = .identity
         }, completion: nil)
-
-        audioEngine?.toggleLooping(time: event.timestamp)
     }
 }
 
@@ -118,7 +131,7 @@ private let interruptionNotifactionNames = [UIApplication.willEnterForegroundNot
                                             AVAudioSession.interruptionNotification,
                                             AVAudioSession.mediaServicesWereResetNotification]
 
-extension ViewController { // Brute force interruption handling
+extension ViewController { // Brute force interruption handling, discards loop :)
     func observeAudioInterruptions() {
         for name in interruptionNotifactionNames {
             NotificationCenter.default.addObserver(self, selector: #selector(enableMicAndStartAudio), name: name, object: nil)

@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 
+// MediaTime is hostTime in seconds.
 typealias MediaTime = Double
 
 class AudioEngine {
@@ -44,29 +45,37 @@ class AudioEngine {
                 startRecording(time: time)
             case .recording:
                 stopRecording(time: time)
-            case .looping:
+            case .looping, .awaitingRecordingStop:
                 player.stop()
                 state = .idle
-            default:
-                break
             }
         }
     }
 
-    private let avAudioEngine = AVAudioEngine()
+    private(set) var state = State.idle
+    enum State {
+        case idle
+        case recording
+        case awaitingRecordingStop // When a user presses stop, we may not have recieved all of our audio.
+        case looping
+    }
+
+    // Set on init, must be standard float
     private let format: AVAudioFormat
 
-    // Allocate enough memory to cache the beginning of a live recording. - 0.5 seconds
-    private let loopStartBufferDur = Double(0.5)
-    private lazy var loopStartBuffer: AVAudioPCMBuffer = {
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(format.sampleRate * loopStartBufferDur)) else {
-            fatalError("Couldn't create buffer")
-        }
-        return buffer
-    }()
+    // Used to synchronize access to recordedBuffers and state.
+    private let bufferQueue = DispatchQueue(label: "bufferQueue")
 
-    private var loopBuffer: AVAudioPCMBuffer?
+    // This is cached to make sure we don't miss the beginning of our recording.
+    private var previousBuffer: Buffer?
 
+    // During recording, buffers retrieved through input tap are collected here
+    private var recordedBuffers = [Buffer]()
+
+    private var recordStartTime = MediaTime(0)
+    private var recordStopTime = MediaTime(0)
+
+    private let avAudioEngine = AVAudioEngine()
     private lazy var inputMixer: AVAudioMixerNode = {
         let mixer = AVAudioMixerNode()
         avAudioEngine.attach(mixer)
@@ -93,10 +102,10 @@ class AudioEngine {
         avAudioEngine.connect(inputNode, to: inputMixer, format: inputNode.outputFormat(forBus: 0))
         avAudioEngine.connect(inputMixer, to: micMuteMixer, format: format)
         avAudioEngine.connect(micMuteMixer, to: outputMixer, format: format)
-
         avAudioEngine.connect(player, to: outputMixer, format: format)
     }
 
+    // Convenience to tie a time to a buffer.
     private struct Buffer {
         let audioBuffer: AVAudioPCMBuffer
         let audioTime: AVAudioTime
@@ -110,8 +119,6 @@ class AudioEngine {
         }
     }
 
-    private let bufferQueue = DispatchQueue(label: "bufferQueue")
-    private var previousBuffer: Buffer?
     private func tapInput() {
         inputMixer.installTap(onBus: 0, bufferSize: 4096, format: inputMixer.outputFormat(forBus: 0)) { (audioBuffer, audioTime) in
             self.bufferQueue.sync {
@@ -122,12 +129,24 @@ class AudioEngine {
         }
     }
 
-    private var recordedBuffers = [Buffer]()
+    private func startRecording(time: MediaTime) {
+        guard state == .idle else { return }
+
+        recordStartTime = time
+        state = .recording
+        recordedBuffers.removeAll()
+
+        if let previousBuffer = self.previousBuffer {
+            recordedBuffers.append(previousBuffer)
+        }
+
+    }
+
     private func handleInput(buffer: Buffer) {
         switch state {
         case .recording:
             recordedBuffers.append(buffer)
-        case .awaitingRecordingStop(let recordStopTime):
+        case .awaitingRecordingStop:
 
             guard buffer.startTime < recordStopTime else { fatalError() }
 
@@ -153,31 +172,7 @@ class AudioEngine {
 
     }
 
-    enum State {
-        case idle
-        case recording
-        case awaitingRecordingStop(MediaTime)
-        case looping
-    }
 
-    var state = State.idle
-    private var recordStartTime = MediaTime(0)
-    private func startRecording(time: MediaTime) {
-        switch state {
-        case .recording, .awaitingRecordingStop, .looping:
-            return
-        case .idle:
-            break
-        }
-
-        recordStartTime = time
-        state = .recording
-        recordedBuffers.removeAll()
-        if let previousBuffer = self.previousBuffer {
-            recordedBuffers.append(previousBuffer)
-        }
-
-    }
 
 
 
@@ -214,7 +209,8 @@ class AudioEngine {
             player.scheduleBuffer(loopBuffer, at: nil, options: [.loops])
             state = .looping
         } else {
-            state = .awaitingRecordingStop(endTime)
+            recordStopTime = endTime
+            state = .awaitingRecordingStop
         }
 
     }
