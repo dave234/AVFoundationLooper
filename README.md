@@ -14,6 +14,4 @@ Then, we join and schedule the full buffer to be looped.
 
 
 ### TODO:
-Recording duration is sample accurate, but hardware IO latencies need to be integrated.
-
 The loop ends should be cross-faded rather than the existing hard transition.

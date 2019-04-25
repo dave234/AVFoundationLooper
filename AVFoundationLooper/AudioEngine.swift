@@ -132,7 +132,7 @@ class AudioEngine {
     private func startRecording(time: MediaTime) {
         guard state == .idle else { return }
 
-        recordStartTime = time
+        recordStartTime = time + AVAudioSession.sharedInstance().inputLatency
         state = .recording
         recordedBuffers.removeAll()
 
@@ -148,7 +148,7 @@ class AudioEngine {
             recordedBuffers.append(buffer)
         case .awaitingRecordingStop:
 
-            guard buffer.startTime < recordStopTime else { fatalError() }
+            guard buffer.startTime < recordStopTime else { break }
 
             let isFinalBuffer = buffer.endTime >= recordStopTime
             if isFinalBuffer {
@@ -161,7 +161,7 @@ class AudioEngine {
 
             if isFinalBuffer {
                 // Audio has been scheduled all the way through recordStopTime, we can now create a complete buffer and loop it.
-                let loopBuffer = joinContigous(buffers: recordedBuffers, startTime: recordStartTime, endTime: recordStopTime)
+                let loopBuffer = readBuffers(startTime: recordStartTime, endTime: recordStopTime)
                 player.scheduleBuffer(loopBuffer, at: nil, options: [.loops])
                 state = .looping
             }
@@ -193,19 +193,24 @@ class AudioEngine {
             return
         }
 
+
+        let outputLatency = AVAudioSession.sharedInstance().outputLatency
+        let bufferDuration = AVAudioSession.sharedInstance().ioBufferDuration
+
         // Can't start playback in the past, so needs to be in the future.
-        let safeStartMediaTime = lastRenderTime.mediaTime + AVAudioSession.sharedInstance().ioBufferDuration
+        let safeStartMediaTime = lastRenderTime.mediaTime + bufferDuration + outputLatency
+        let playbackStartTime = max(safeStartMediaTime, endTime)
 
         // Since we are starting playback at a future time, In order to align the playback of the beginning
-        // of the recording with `endTime`, we need to truncate the head of the buffer.
-        let durationTruncatedFromHead = safeStartMediaTime - endTime
-        let partialBuffer = joinContigous(buffers: buffers, startTime: startTime + durationTruncatedFromHead, endTime: endTime)
+        // of the recording with `endTime`, we might need to truncate the head of the buffer.
+        let durationTruncatedFromHead = playbackStartTime - endTime
+        let partialBuffer = readBuffers(startTime: startTime + durationTruncatedFromHead, endTime: endTime)
 
-        player.scheduleBuffer(partialBuffer, completionHandler: nil)
-        player.play(at: AVAudioTime(hostTime: UInt64(safeStartMediaTime / ticksToSeconds)))
+        player.scheduleBuffer(partialBuffer)
+        player.play(at: AVAudioTime(hostTime: UInt64((playbackStartTime - outputLatency) / ticksToSeconds)))
 
         if recordedEndTime >= endTime {
-            let loopBuffer = joinContigous(buffers: buffers, startTime: startTime, endTime: endTime)
+            let loopBuffer = readBuffers(startTime: startTime, endTime: endTime)
             player.scheduleBuffer(loopBuffer, at: nil, options: [.loops])
             state = .looping
         } else {
@@ -215,15 +220,14 @@ class AudioEngine {
 
     }
 
-    private func joinContigous(buffers: [Buffer], startTime: MediaTime, endTime: MediaTime) -> AVAudioPCMBuffer {
-        let roundingTolerance = AVAudioFrameCount(2)
-        let finalFrameCount = AVAudioFrameCount(round((endTime - startTime) * format.sampleRate))
-        guard let audioBuffer = AVAudioPCMBuffer(pcmFormat: format,
-                                                 frameCapacity: finalFrameCount + roundingTolerance) else {
-                                                    fatalError("Couldn't allocate buffer!")
+    private func readBuffers(startTime: MediaTime, endTime: MediaTime) -> AVAudioPCMBuffer {
+
+        let frameCapacity = recordedBuffers.reduce(0) { $0 + $1.audioBuffer.frameLength }
+        guard let audioBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity) else {
+            fatalError("Couldn't allocate buffer!")
         }
 
-        for buffer in buffers {
+        for buffer in recordedBuffers {
             copyToBuffer(source: buffer, to: audioBuffer, within: startTime..<endTime)
         }
 
