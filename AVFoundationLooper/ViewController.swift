@@ -38,6 +38,15 @@ class ViewController: UIViewController {
         if firstAppearance {
             firstAppearance = false
             enableMicAndStartAudio()
+
+            loopButton.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
+            UIView.animate(withDuration: 0.1) {
+                self.loopButton.alpha = 1
+                self.loopButton.transform = .identity
+            }
+
+
+            
         }
     }
 
@@ -97,6 +106,7 @@ class ViewController: UIViewController {
         button.setTitle("Record", for: .normal)
         button.setTitleColor(.white, for: .normal)
         button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 40)
+        button.alpha = 0
         return button
     }()
 
