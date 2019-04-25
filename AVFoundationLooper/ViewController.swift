@@ -80,7 +80,7 @@ class ViewController: UIViewController {
         
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setActive(true)
-        try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+        try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth])
         try audioSession.setPreferredIOBufferDuration(256 / audioSession.sampleRate)
 
         guard let format = AVAudioFormat(standardFormatWithSampleRate: audioSession.sampleRate, channels: 2) else {

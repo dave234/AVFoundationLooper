@@ -172,23 +172,19 @@ class AudioEngine {
 
     }
 
-
-
-
-
     private func stopRecording(time: MediaTime) {
         switch state {
         case .recording:
-            startLooping(buffers: self.recordedBuffers, startTime: recordStartTime, endTime: time)
+            startLooping(endTime: time + AVAudioSession.sharedInstance().inputLatency)
         default:
             break
         }
     }
 
-    private func startLooping(buffers: [Buffer], startTime: MediaTime, endTime: MediaTime) {
+    private func startLooping(endTime: MediaTime) {
 
         guard let lastRenderTime = player.lastRenderTime,
-            let recordedEndTime = buffers.last?.endTime else {
+            let recordedEndTime = recordedBuffers.last?.endTime else {
             state = .idle
             return
         }
@@ -204,13 +200,13 @@ class AudioEngine {
         // Since we are starting playback at a future time, In order to align the playback of the beginning
         // of the recording with `endTime`, we might need to truncate the head of the buffer.
         let durationTruncatedFromHead = playbackStartTime - endTime
-        let partialBuffer = readBuffers(startTime: startTime + durationTruncatedFromHead, endTime: endTime)
+        let partialBuffer = readBuffers(startTime: recordStartTime + durationTruncatedFromHead, endTime: endTime)
 
         player.scheduleBuffer(partialBuffer)
         player.play(at: AVAudioTime(hostTime: UInt64((playbackStartTime - outputLatency) / ticksToSeconds)))
 
         if recordedEndTime >= endTime {
-            let loopBuffer = readBuffers(startTime: startTime, endTime: endTime)
+            let loopBuffer = readBuffers(startTime: recordStartTime, endTime: endTime)
             player.scheduleBuffer(loopBuffer, at: nil, options: [.loops])
             state = .looping
         } else {
