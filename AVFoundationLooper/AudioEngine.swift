@@ -199,7 +199,7 @@ class AudioEngine {
 
         // Since we are starting playback at a future time, In order to align the playback of the beginning
         // of the recording with `endTime`, we might need to truncate the head of the buffer.
-        let durationTruncatedFromHead = playbackStartTime - endTime
+        let durationTruncatedFromHead = playbackStartTime - endTime + bufferDuration
         let partialBuffer = readBuffers(startTime: recordStartTime + durationTruncatedFromHead, endTime: endTime)
 
         player.scheduleBuffer(partialBuffer)
